@@ -13,7 +13,7 @@ function getJwtSecret(nodeEnv, envSecret) {
   if (currentEnv === 'production' && (!currentSecret || String(currentSecret).trim() === '')) {
     throw new Error('FATAL: JWT_SECRET must be explicitly set in production');
   }
-  return currentSecret || 'todolist_super_secret_jwt_key_2026_dev';
+  return currentSecret;
 }
 
 const JWT_SECRET = getJwtSecret();
