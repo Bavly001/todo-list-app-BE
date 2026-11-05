@@ -59,6 +59,16 @@ app.get(['/', '/health', '/api/health'], (req, res) => {
 // 1. Auth routes (login, me, users)
 app.use(['/api/auth', '/auth', '/api/users', '/users'], authRoutes);
 
+// Root & convenience aliases for auth endpoints (POST /login, /api/login, GET /me, /api/me)
+app.post(['/login', '/login.json', '/api/login'], (req, res, next) => {
+  req.url = '/login';
+  authRoutes(req, res, next);
+});
+app.get(['/me', '/me.json', '/api/me'], (req, res, next) => {
+  req.url = '/me';
+  authRoutes(req, res, next);
+});
+
 // 2. Tasks routes (query with views, counts, single task, CRUD, bulk fallback)
 app.use(['/api/tasks', '/tasks'], tasksRoutes);
 
