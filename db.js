@@ -110,7 +110,7 @@ async function initializeDatabase(retries = 10, delayMs = 3000) {
       await connection.query(`
         CREATE TABLE IF NOT EXISTS themes (
           user_id VARCHAR(255) PRIMARY KEY,
-          mode VARCHAR(50) DEFAULT 'light',
+          mode VARCHAR(50) DEFAULT NULL,
           color_data JSON NULL,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -160,13 +160,6 @@ async function initializeDatabase(retries = 10, delayMs = 3000) {
         );
       }
 
-      // Seed default themes
-      await connection.query(`
-        INSERT INTO themes (user_id, mode, color_data) VALUES
-          ('usr_admin01DoitApp99', 'light', '{"bgColor": "bg-blue-600", "secondaryBg": "bg-blue-100", "bgHover": "hover:bg-blue-700", "textColor": "text-blue-600", "textHover": "hover:text-blue-700", "mainColor": "blue"}'),
-          ('usr_demo02DoitApp88', 'light', '{"bgColor": "bg-blue-600", "secondaryBg": "bg-blue-100", "bgHover": "hover:bg-blue-700", "textColor": "text-blue-600", "textHover": "hover:text-blue-700", "mainColor": "blue"}')
-        ON DUPLICATE KEY UPDATE mode = VALUES(mode);
-      `);
 
       // Remove completed tasks for both users per user instructions
       await connection.query(

@@ -4,18 +4,6 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-const DEFAULT_THEME = {
-  mode: 'light',
-  color: {
-    bgColor: 'bg-blue-600',
-    secondaryBg: 'bg-blue-100',
-    bgHover: 'hover:bg-blue-700',
-    textColor: 'text-blue-600',
-    textHover: 'hover:text-blue-700',
-    mainColor: 'blue',
-  },
-};
-
 // GET /api/theme
 router.get(['/', '/theme.json'], authenticate, async (req, res) => {
   const userId = req.userId;
@@ -27,16 +15,22 @@ router.get(['/', '/theme.json'], authenticate, async (req, res) => {
     );
 
     if (rows.length > 0) {
-      const color =
-        typeof rows[0].color_data === 'string'
-          ? JSON.parse(rows[0].color_data)
-          : rows[0].color_data;
+      let color = null;
+      if (rows[0].color_data) {
+        color =
+          typeof rows[0].color_data === 'string'
+            ? JSON.parse(rows[0].color_data)
+            : rows[0].color_data;
+      }
       res.json({
-        mode: rows[0].mode || 'light',
-        color: color || DEFAULT_THEME.color,
+        mode: rows[0].mode || null,
+        color: color || null,
       });
     } else {
-      res.json(DEFAULT_THEME);
+      res.json({
+        mode: null,
+        color: null,
+      });
     }
   } catch (error) {
     console.error(`Error fetching theme for user ${userId}:`, error);
@@ -47,14 +41,19 @@ router.get(['/', '/theme.json'], authenticate, async (req, res) => {
 // PUT /api/theme
 router.put(['/', '/theme.json'], authenticate, async (req, res) => {
   const userId = req.userId;
-  const { mode = 'light', color = {} } = req.body || {};
+  const { mode, color } = req.body || {};
 
   try {
+    const colorJson = color !== undefined && color !== null ? JSON.stringify(color) : null;
+    const modeVal = mode !== undefined && mode !== null ? mode : null;
+
     await pool.query(
       `INSERT INTO themes (user_id, mode, color_data)
        VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE mode = VALUES(mode), color_data = VALUES(color_data)`,
-      [userId, mode, JSON.stringify(color)]
+       ON DUPLICATE KEY UPDATE
+         mode = COALESCE(VALUES(mode), mode),
+         color_data = COALESCE(VALUES(color_data), color_data)`,
+      [userId, modeVal, colorJson]
     );
     res.json({ message: 'Theme updated successfully' });
   } catch (error) {

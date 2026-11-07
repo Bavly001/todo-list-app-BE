@@ -15,11 +15,11 @@ function createMockRes() {
     res: {
       status(code) {
         statusCalled = code;
-        return {
-          json(data) {
-            jsonCalled = data;
-          },
-        };
+        return this;
+      },
+      json(data) {
+        jsonCalled = data;
+        return this;
       },
     },
     getStatus: () => statusCalled,
@@ -84,4 +84,57 @@ assert.ok(typeof completedTasksRouter === 'function', 'completedTasksRouter must
 assert.ok(typeof themesRouter === 'function', 'themesRouter must be an Express router');
 assert.ok(typeof feedbacksRouter === 'function', 'feedbacksRouter must be an Express router');
 
-console.log('[PASS] Routes and auth middleware tests passed!');
+// Test 5: Themes route handler returns null mode and color when no theme row exists in DB
+(async () => {
+  const { pool } = require('../db');
+  const originalQuery = pool.query;
+  try {
+    pool.query = async (sql) => {
+      if (typeof sql === 'string' && sql.includes('SELECT mode, color_data FROM themes')) {
+        return [[]];
+      }
+      return [[]];
+    };
+
+    const getLayer = themesRouter.stack.find((l) => l.route && l.route.methods.get);
+    assert.ok(getLayer, 'GET route should exist on themesRouter');
+    const handler = getLayer.route.stack[getLayer.route.stack.length - 1].handle;
+    const mock = createMockRes();
+    const req = { userId: 'usr_test' };
+    await handler(req, mock.res);
+
+    assert.deepStrictEqual(
+      mock.getJson(),
+      { mode: null, color: null },
+      'Empty DB returns null mode and null color without forcing defaults'
+    );
+  } finally {
+    pool.query = originalQuery;
+  }
+
+  // Test 6: Themes route handler returns stored mode and color when row exists
+  try {
+    pool.query = async (sql) => {
+      if (typeof sql === 'string' && sql.includes('SELECT mode, color_data FROM themes')) {
+        return [[{ mode: 'dark', color_data: JSON.stringify({ mainColor: 'cyan' }) }]];
+      }
+      return [[]];
+    };
+
+    const getLayer = themesRouter.stack.find((l) => l.route && l.route.methods.get);
+    const handler = getLayer.route.stack[getLayer.route.stack.length - 1].handle;
+    const mock = createMockRes();
+    const req = { userId: 'usr_test' };
+    await handler(req, mock.res);
+
+    assert.deepStrictEqual(
+      mock.getJson(),
+      { mode: 'dark', color: { mainColor: 'cyan' } },
+      'Should return saved dark mode and custom color'
+    );
+  } finally {
+    pool.query = originalQuery;
+  }
+
+  console.log('[PASS] Routes, themes, and auth middleware tests passed!');
+})();
